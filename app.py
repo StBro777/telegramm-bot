@@ -1,11 +1,14 @@
 import asyncio
+import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
+from dotenv import find_dotenv, load_dotenv 
 
 
-bot = Bot(token='7857010421:AAGrOSLwf4ik_x3DRyB9lKQYGlEIEJkbTI4')
+load_dotenv(find_dotenv())
 
 
+bot = Bot(token=os.getenv('TOKEN')) 
 dp = Dispatcher()
 
 
@@ -17,18 +20,13 @@ async def start_cmd(message: types.Message):
 
 @dp.message()
 async def echo(message: types.Message):
-    text = message.text
-
-    if text in ['Привет', 'привет', 'hi', 'hello']:
-        await message.answer('И тебе привет!')
-    elif text in ['Пока', 'пока', 'пакеда','До Свидания']:
-        await message.answer('И тебе пока!')
-    else:
-        await message.answer(message.txt)
+    await message.answer(message.text)
+    
 
 
 
 async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 asyncio.run(main())
