@@ -2,7 +2,8 @@ from aiogram import F, Router, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from database.models import Product
 from filters.chat_types import ChatTypeFilter, IsAdmin
 from kbds.reply import get_keyboard
 
@@ -96,38 +97,82 @@ async def back_step_handler(message: types.Message, state: FSMContext) -> None:
         previous = step
 
 
-
+#Ловим данные для состояние name и потом меняем состояние на description
 @admin_router.message(AddProduct.name, F.text)
 async def add_name(message: types.Message, state: FSMContext):
+    # Здесь можно сделать какую либо дополнительную проверку
+    #и выйти из хендлера не меняя состояние с отправкой соответствующего сообщения
+    #например:
+    if len(message.text) >= 100:
+        await message.answer("Название товара не должно превышать 100 символов. \n Введите заново")
+        return
+    
     await state.update_data(name=message.text)
     await message.answer("Введите описание товара")
     await state.set_state(AddProduct.description)
 
-
+#Хендлер для отлова некорректных вводов для состояния name
 @admin_router.message(AddProduct.name)
-async def add_name(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели недопустимые данные, введите текст названия товара")
-   
+async def add_name2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели не допустимые данные, введите текст названия товара")
 
 
+
+#Ловим данные для состояние description и потом меняем состояние на price
 @admin_router.message(AddProduct.description, F.text)
 async def add_description(message: types.Message, state: FSMContext):
     await state.update_data(description=message.text)
     await message.answer("Введите стоимость товара")
     await state.set_state(AddProduct.price)
 
+#Хендлер для отлова некорректных вводов для состояния description
+@admin_router.message(AddProduct.description)
+async def add_description2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели не допустимые данные, введите текст описания товара")
 
+
+
+#Ловим данные для состояние price и потом меняем состояние на image
 @admin_router.message(AddProduct.price, F.text)
 async def add_price(message: types.Message, state: FSMContext):
+    try:
+        float(message.text)
+    except ValueError:
+        await message.answer("Введите корректное значение цены")
+        return
+    
     await state.update_data(price=message.text)
     await message.answer("Загрузите изображение товара")
     await state.set_state(AddProduct.image)
 
 
+#Хендлер для отлова некорректных ввода для состояния price
+@admin_router.message(AddProduct.price)
+async def add_price2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели не допустимые данные, введите стоимость товара")
+
+
+
+#Ловим данные для состояние image и потом выходим из состояний
 @admin_router.message(AddProduct.image, F.photo)
-async def add_image(message: types.Message, state: FSMContext):
+async def add_image(message: types.Message, state: FSMContext, session:AsyncSession):
+
     await state.update_data(image=message.photo[-1].file_id)
     await message.answer("Товар добавлен", reply_markup=ADMIN_KB)
     data = await state.get_data()
-    await message.answer(str(data))
+
+    obj = Product(
+        name=data['name'],
+        description = data['description'],
+        price = float(data['price']),
+        image=data['image'],
+
+    )
+    session.add(obj)
+    await session.commit()
     await state.clear()
+
+
+@admin_router.message(AddProduct.image)
+async def add_image2(message: types.Message, state: FSMContext):
+    await message.answer("Отправьте фото пищи")
