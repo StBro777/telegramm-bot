@@ -16,7 +16,7 @@ from handlers.admin_private import admin_router
 from common.bot_cmd_list import private
 
 
-ALLOWED_UPDATES = ['message, edited_message']
+# ALLOWED_UPDATES = ['message', 'edited_message', 'callback_querry']
 
 
 
@@ -52,6 +52,6 @@ async def main():
     await create_db()
     await bot.delete_webhook(drop_pending_updates=True)
     await bot.set_my_commands(commands=private,scope=types.BotCommandScopeAllPrivateChats())
-    await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 asyncio.run(main())
